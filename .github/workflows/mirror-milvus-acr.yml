@@ -1,0 +1,39 @@
+name: Mirror Milvus to ACR
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mirror:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Copy Milvus to Alibaba ACR
+        env:
+          ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+          ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+          ACR_REGISTRY: crpi-gur5k35c0gyt7544.cn-beijing.personal.cr.aliyuncs.com
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          SOURCE="ghcr.io/xsanduo23/rag-milvus:v2.5.4"
+          TARGET="${ACR_REGISTRY}/xsanduo23/rag-milvus:v2.5.4"
+
+          printf '%s' "$ACR_PASSWORD" |
+            docker login "$ACR_REGISTRY" \
+              --username "$ACR_USERNAME" --password-stdin
+
+          docker pull --platform linux/amd64 "$SOURCE"
+          docker tag "$SOURCE" "$TARGET"
+          docker push "$TARGET"
+
+          echo "已推送：${TARGET}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Logout
+        if: always()
+        run: docker logout crpi-gur5k35c0gyt7544.cn-beijing.personal.cr.aliyuncs.com
